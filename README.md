@@ -101,5 +101,3 @@ in your browser.
 ## Author
 
 **Heet Jain**
-
-GitHub: https://github.com/heet-jain05
