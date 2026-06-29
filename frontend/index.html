@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zip Pro | Gaming UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+
+        html,
+        body {
+            min-height: 100vh;
+            margin: 0;
+            background: #020617;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 40px;
+            overflow-y: auto;
+        }
+
+        .game-wrapper {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-bottom: 60px;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #grid {
+            margin: 0 auto;
+            display: grid;
+            place-items: center;
+        }
+
+        .cell {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            background: rgba(255, 255, 255, 0.05);
+            position: relative;
+        }
+
+        /* BLOCKADE COLOR SET TO WHITE */
+        .blockade {
+            background: #ffffff !important;
+            border: 1px solid #ffffff;
+            opacity: 0.9;
+            cursor: not-allowed;
+        }
+
+        /* EDGE WALLS (Elite Mode) */
+        .wall-right {
+            border-right: 4px solid #ffffff !important;
+            border-radius: 0 !important;
+        }
+
+        .wall-bottom {
+            border-bottom: 4px solid #ffffff !important;
+            border-radius: 0 !important;
+        }
+
+        .path-active {
+            background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+            border-radius: 50% !important;
+            transform: scale(0.8);
+            z-index: 5;
+        }
+
+        .checkpoint {
+            border: 2px solid #fbbf24 !important;
+            color: #fbbf24;
+            font-weight: 900;
+            z-index: 10;
+            background: #020617;
+        }
+
+        .btn-game {
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 900;
+            font-size: 0.7rem;
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="game-wrapper">
+        <div class="animate__animated animate__fadeInDown text-center">
+            <h1
+                class="text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+                ZIP</h1>
+            <div class="h-1.5 w-16 bg-blue-500 mx-auto rounded-full mt-2 mb-8"></div>
+        </div>
+
+        <div class="flex gap-3 mb-10">
+            <button onclick="newGame(4,5)"
+                class="glass px-6 py-2.5 rounded-full btn-game text-emerald-400">Easy</button>
+            <button onclick="newGame(6,7)"
+                class="glass px-6 py-2.5 rounded-full btn-game text-amber-400">Medium</button>
+            <button onclick="newGame(8,10, 'hard')"
+                class="glass px-6 py-2.5 rounded-full btn-game text-rose-400">Hard</button>
+            <button onclick="newGame(8,12, 'elite')"
+                class="glass px-6 py-2.5 rounded-full btn-game text-white border-white/20">Elite</button>
+        </div>
+
+        <div class="flex gap-12 mb-10 bg-black/40 p-5 px-10 rounded-[2rem] border border-white/5 shadow-2xl">
+            <div class="text-center">
+                <p class="text-[10px] text-slate-500 uppercase font-black mb-1 tracking-widest">Time</p>
+                <p id="timer" class="text-emerald-400 font-mono text-3xl">0s</p>
+            </div>
+            <div class="text-center">
+                <p class="text-[10px] text-slate-500 uppercase font-black mb-1 tracking-widest">BT</p>
+                <p id="bt" class="text-rose-400 font-mono text-3xl">0</p>
+            </div>
+        </div>
+
+        <div id="grid" class="gap-2 p-7 glass rounded-[3rem]"></div>
+
+        <div class="mt-10 flex gap-4">
+            <button onclick="resetPath()"
+                class="glass bg-slate-800/40 px-8 py-3 rounded-2xl btn-game text-slate-300">Reset</button>
+            <button onclick="newGame(lastS, lastC, lastMode)"
+                class="glass bg-indigo-900/20 px-8 py-3 rounded-2xl btn-game text-indigo-300">Shuffle</button>
+        </div>
+    </div>
+
+    <div id="modal" class="hidden fixed inset-0 bg-slate-950/95 flex items-center justify-center z-50">
+        <div class="glass p-12 rounded-[3rem] text-center">
+            <h2 class="text-4xl font-black mb-10 italic uppercase text-white">Victory!</h2>
+            <input id="pName" type="text" placeholder="INITIALS"
+                class="bg-black/50 border border-white/10 p-5 w-full rounded-2xl text-white text-center font-bold mb-8 uppercase" />
+            <button onclick="submitScore()"
+                class="w-full bg-blue-600 py-5 rounded-2xl font-black text-xs uppercase tracking-widest text-white">Save</button>
+        </div>
+    </div>
+
+    <script>
+        let lastS = 4, lastC = 5, lastMode = "normal", size, checkpoints, blockades = [], walls = [], path = [], dragging = false, backtracks = 0, timer, startT, timeStr = "0s";
+
+        async function newGame(s, c, mode = "normal") {
+            lastS = s; lastC = c; lastMode = mode;
+            const g = document.getElementById("grid");
+            g.innerHTML = "<div class='p-20 text-blue-400 animate-pulse font-black uppercase text-xs tracking-widest'>Syncing...</div>";
+            try {
+                const res = await fetch("http://127.0.0.1:8000/generate", {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ size: s, checkpoints: c, mode: mode })
+                });
+                const data = await res.json();
+                size = data.size; checkpoints = data.checkpoints;
+                blockades = data.blockades || []; walls = data.walls || [];
+                resetPath(); renderGrid();
+            } catch (e) { g.innerHTML = "OFFLINE"; }
+        }
+
+        function renderGrid() {
+            const g = document.getElementById("grid");
+            g.innerHTML = "";
+            g.style.gridTemplateColumns = `repeat(${size}, 44px)`;
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const d = document.createElement("div");
+                    d.className = "cell"; d.dataset.r = r; d.dataset.c = c;
+
+                    if (blockades.some(b => b[0] === r && b[1] === c)) {
+                        d.classList.add("blockade");
+                    } else {
+                        if (walls.some(w => (w.p1[0] == r && w.p1[1] == c && w.p2[0] == r && w.p2[1] == c + 1))) d.classList.add("wall-right");
+                        if (walls.some(w => (w.p1[0] == r && w.p1[1] == c && w.p2[0] == r + 1 && w.p2[1] == c))) d.classList.add("wall-bottom");
+
+                        for (let k in checkpoints) {
+                            if (checkpoints[k][0] == r && checkpoints[k][1] == c) { d.innerText = k; d.classList.add("checkpoint"); }
+                        }
+                        d.onpointerdown = (e) => { e.preventDefault(); dragging = true; move(r, c); };
+                        d.onpointerenter = () => { if (dragging) move(r, c); };
+                    }
+                    g.appendChild(d);
+                }
+            }
+        }
+
+        function move(r, c) {
+            if (path.length === 0) {
+                if (checkpoints["1"][0] == r && checkpoints["1"][1] == c) { path.push([r, c]); refresh(); startTimer(); }
+                return;
+            }
+            const last = path[path.length - 1];
+            if (last[0] === r && last[1] === c) return;
+
+            // Edge Wall Collision Check
+            const blocked = walls.some(w => {
+                const p1 = w.p1, p2 = w.p2;
+                return (p1[0] == last[0] && p1[1] == last[1] && p2[0] == r && p2[1] == c) ||
+                    (p1[0] == r && p1[1] == c && p2[0] == last[0] && p2[1] == last[1]);
+            });
+            if (blocked) return;
+
+            if (Math.abs(last[0] - r) + Math.abs(last[1] - c) !== 1) return;
+            if (path.length >= 2) {
+                const prev = path[path.length - 2];
+                if (prev[0] == r && prev[1] == c) { path.pop(); backtracks++; document.getElementById("bt").innerText = backtracks; refresh(); return; }
+            }
+            if (path.some(p => p[0] == r && p[1] == c)) return;
+
+            path.push([r, c]); refresh();
+            if (path.length === (size * size) - blockades.length) { clearInterval(timer); document.getElementById("modal").classList.remove("hidden"); }
+        }
+
+        function refresh() {
+            document.querySelectorAll(".cell").forEach(e => e.classList.remove("path-active"));
+            path.forEach(p => {
+                const el = document.querySelector(`[data-r="${p[0]}"][data-c="${p[1]}"]`);
+                if (el) el.classList.add("path-active");
+            });
+        }
+
+        function startTimer() { clearInterval(timer); startT = Date.now(); timer = setInterval(() => { timeStr = Math.floor((Date.now() - startT) / 1000) + "s"; document.getElementById("timer").innerText = timeStr; }, 1000); }
+        function resetPath() { path = []; backtracks = 0; document.getElementById("bt").innerText = "0"; clearInterval(timer); refresh(); }
+
+        async function submitScore() {
+            const name = document.getElementById("pName").value.toUpperCase() || "ANON";
+            const res = await fetch("http://127.0.0.1:8000/submit", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, time: timeStr, grid: `${size}x${size}`, backtracks })
+            });
+            if (res.ok) window.location.href = "leaderboard.html";
+        }
+
+        window.onpointerup = () => dragging = false;
+        newGame(4, 5);
+    </script>
+</body>
+
+</html>
